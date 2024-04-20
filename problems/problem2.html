@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>CPSC 487/587</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19.1/dist/lil-gui.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/10.3.0/math.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quaternion@1.5.1/quaternion.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/numeric@1.2.6/numeric-1.2.6.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+              "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+              "three/": "https://unpkg.com/three@0.160.0/"
+            }
+        }
+    </script>
+</head>
+<body>
+<script type="module">
+    // import {get_default_lil_gui, ThreeEngine, refresh_displays} from "../js/utils/utils_three.js";
+
+    // todo: create a visualization that demonstrates your knowledge of quaternions.  This is intentionally
+    // todo: open-ended.  Be as creative as you want, or feel free to recreate any of the visualizations
+    // todo: found in Section 3.3.
+
+    import {ThreeEngine, get_default_lil_gui, refresh_displays} from "../../js/utils/utils_three.js";
+    import {dot_product, cross_product, add_matrix_matrix, mul_matrix_scalar, normalized_matrix, frobenius_norm_matrix, unroll_matrix_to_list} from "../../js/utils/utils_math.js";;
+
+    function multiplyQuaternionsScalarVector(qFirst, qSecond) {
+        let firstVector = qFirst[1], secondVector = qSecond[1];
+        let dotProduct = dot_product(firstVector, secondVector);
+        let scalarPart = qFirst[0] * qSecond[0] - dotProduct;
+        let multipliedFirstVector = mul_matrix_scalar(firstVector, qSecond[0]);
+        let multipliedSecondVector = mul_matrix_scalar(secondVector, qFirst[0]);
+        let crossProductVector = cross_product(firstVector, secondVector);
+        let vectorPart = add_matrix_matrix(add_matrix_matrix(multipliedFirstVector, multipliedSecondVector), crossProductVector);
+        return [scalarPart, vectorPart];
+    }
+
+    function multiplyWxyzQuaternions(q1, q2) {
+        let vFirst = [q1[1], q1[2], q1[3]], vSecond = [q2[1], q2[2], q2[3]];
+        let quaternionFirst = [q1[0], vFirst], quaternionSecond = [q2[0], vSecond];
+        let result = multiplyQuaternionsScalarVector(quaternionFirst, quaternionSecond);
+        let vectorResult = unroll_matrix_to_list(result[1]);
+        return [result[0], ...vectorResult];
+    }
+
+    let engine = ThreeEngine.new_default_3d();
+
+    let settings = {
+
+        display_quaternions: true,
+        display_wireframe: true,
+
+        w: 1,
+        x: 0,
+        y: 0,
+        z: 0,
+        norm: 1
+    };
+
+    let actions = {
+        reset: function() {
+            settings.w = 1;
+            settings.x = 0;
+            settings.y = 0;
+            settings.z = 0;
+            refresh_displays(gui);
+        }
+    };
+
+    let gui = get_default_lil_gui();
+
+    gui.add(settings, 'display_quaternions').name('Display Quaternions');
+    gui.add(settings, 'display_wireframe').name('Display Wireframe');
+    gui.add(settings, 'w', -2.0, 2.0).name('W');
+    gui.add(settings, 'x', -2.0, 2.0).name('X');
+    gui.add(settings, 'y', -2.0, 2.0).name('Y');
+    gui.add(settings, 'z', -2.0, 2.0).name('Z');
+    gui.add(settings, 'norm').disable();
+    gui.add(actions, 'reset').name('Reset');
+
+    engine.add_suzanne_monkey_as_mesh_object(0x00eeff);
+    engine.toggle_mesh_object_visibility(0);
+
+    let points = engine.get_local_vertex_positions_of_mesh_object_wireframe(0);
+
+    engine.animation_loop(() => {
+        engine.set_mesh_object_wireframe_visibility(0, settings.display_wireframe);
+        let quaternion = [settings.w, settings.x, settings.y, settings.z];
+        settings.norm = frobenius_norm_matrix(quaternion);
+        refresh_displays(gui);
+
+        let transformedPoints = points.map(vertex => {
+            let vertexUnrolled = unroll_matrix_to_list(vertex);
+            let transformedQuaternion = multiplyWxyzQuaternions(quaternion, [0, ...vertexUnrolled]);
+            return transformedQuaternion.slice(1);
+        });
+
+        engine.update_vertex_positions_of_mesh_object_wireframe(0, transformedPoints);
+    });
+
+
+</script>
+</body>
+</html>
