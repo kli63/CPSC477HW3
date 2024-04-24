@@ -51,8 +51,6 @@
     let engine = ThreeEngine.new_default_3d();
 
     let settings = {
-
-        // display_quaternions: true,
         display_wireframe: true,
 
         w: 1,
@@ -73,8 +71,6 @@
     };
 
     let gui = get_default_lil_gui();
-
-    // gui.add(settings, 'display_quaternions').name('Display Quaternions');
     gui.add(settings, 'display_wireframe').name('Display Wireframe');
     gui.add(settings, 'w', -2.0, 2.0).name('W');
     gui.add(settings, 'x', -2.0, 2.0).name('X');
